@@ -51,7 +51,8 @@ import java.util.UUID;
 public class AuthServerConfig {
 
     private final DatabaseUserDetailsService userDetailsService;
-    private final PasswordEncoder passwordEncoder;
+   // private final PasswordEncoder passwordEncoder;
+    private final RegisteredClientRepository clientRepository;
 
     @Bean
     @Order(1)
@@ -118,6 +119,9 @@ public class AuthServerConfig {
         return http.build();
     }
 
+
+
+
     /***
      *     This is the in-memory user details service for testing purposes.
      * @return
@@ -134,23 +138,29 @@ public class AuthServerConfig {
 //        return new InMemoryUserDetailsManager(userDetails);
 //    }
 
-    @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        // Modify the client to match your needs - using your client ID and redirect URI
-        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("client")  // Changed to match your client ID
-                .clientSecret(passwordEncoder.encode("secret"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://localhost:8080/login/oauth2/code/client")
-                .scope(OidcScopes.OPENID)
-                .scope("read")
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-                .build();
 
-        return new InMemoryRegisteredClientRepository(oidcClient);
-    }
+    /***
+     *     This is the in-memory user details service for testing purposes.
+     * @return
+     */
+    // Uncomment this method if you want to use the in-memory user details service
+//    @Bean
+//    public RegisteredClientRepository registeredClientRepository() {
+//        // Modify the client to match your needs - using your client ID and redirect URI
+//        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
+//                .clientId("client")  // Changed to match your client ID
+//                .clientSecret(passwordEncoder.encode("secret"))
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+//                .redirectUri("http://localhost:8080/login/oauth2/code/client")
+//                .scope(OidcScopes.OPENID)
+//                .scope("read")
+//                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+//                .build();
+//
+//        return new InMemoryRegisteredClientRepository(oidcClient);
+//    }
 
 
 
