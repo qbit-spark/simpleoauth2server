@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Consent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+        }
+        button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .approve {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        .deny {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Consent Required</h1>
+    <p>
+        The application <strong th:text="${clientId}"></strong> wants to access your data with the following permissions:
+    </p>
+
+    <form th:action="@{/oauth2/authorize}" method="post">
+        <input type="hidden" name="client_id" th:value="${clientId}">
+        <input type="hidden" name="state" th:value="${state}">
+
+        <div th:if="${not #lists.isEmpty(scopes)}">
+            <h2>New permissions requested:</h2>
+            <ul>
+                <li th:each="scope : ${scopes}">
+                    <input type="checkbox" name="scope" th:value="${scope.key}" checked>
+                    <label th:text="${scope.value}"></label>
+                </li>
+            </ul>
+        </div>
+
+        <div th:if="${not #lists.isEmpty(previouslyApprovedScopes)}">
+            <h2>Already approved permissions:</h2>
+            <ul>
+                <li th:each="scope : ${previouslyApprovedScopes}">
+                    <input type="checkbox" name="scope" th:value="${scope.key}" checked>
+                    <label th:text="${scope.value}"></label>
+                </li>
+            </ul>
+        </div>
+
+        <div>
+            <button name="consent_action" value="approve" class="approve">Approve</button>
+            <button name="consent_action" value="deny" class="deny">Deny</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

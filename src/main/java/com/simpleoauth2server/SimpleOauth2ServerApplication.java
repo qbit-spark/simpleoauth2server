@@ -1,4 +1,4 @@
-package com.keycloackplayground.simpleoauth2server;
+package com.simpleoauth2server;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

@@ -1,4 +1,4 @@
-package com.keycloackplayground.simpleoauth2server;
+package com.simpleoauth2server;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -1,4 +1,4 @@
-package com.keycloackplayground.simpleoauth2server.Config.CorsConfig;
+package com.simpleoauth2server.Config.CorsConfig;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

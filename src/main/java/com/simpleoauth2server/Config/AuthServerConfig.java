@@ -1,4 +1,4 @@
-package com.keycloackplayground.simpleoauth2server.Config;
+package com.simpleoauth2server.Config;
 
 
 import com.nimbusds.jose.jwk.JWKSet;
@@ -9,6 +9,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -31,6 +32,7 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
@@ -67,11 +69,20 @@ public class AuthServerConfig {
                                 .requestMatchers("/oauth2/consent").permitAll() // This must come BEFORE anyRequest()
                                 .anyRequest().authenticated()
                 )
+
                 .exceptionHandling((exceptions) -> exceptions
+                        // For HTML browser requests - redirect to login
                         .defaultAuthenticationEntryPointFor(
-                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new LoginUrlAuthenticationEntryPoint("/custom-login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
+                        // For API requests - return 401 with WWW-Authenticate header
+                        .defaultAuthenticationEntryPointFor(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                                new MediaTypeRequestMatcher(MediaType.APPLICATION_JSON)
+                        )
+                        // Optional: Custom access denied handler (for 403 Forbidden)
+                        .accessDeniedPage("/access-denied")
                 );
 
         return http.build();
@@ -83,11 +94,19 @@ public class AuthServerConfig {
             throws Exception {
         http
                 .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers("/custom-login", "/error", "/access-denied").permitAll()
                         .anyRequest().authenticated()
                 )
-                // Form login handles the redirect to the login page from the
-                // authorization server filter chain
-                .formLogin(Customizer.withDefaults());
+                .formLogin(formLogin ->
+                        formLogin
+                                .loginPage("/custom-login")
+                                .loginProcessingUrl("/login")
+                                .defaultSuccessUrl("/")
+                                .permitAll()
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        .accessDeniedPage("/access-denied")
+                );
 
         return http.build();
     }

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${errorTitle}">Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+        }
+        .error-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #e74c3c;
+            margin-bottom: 10px;
+        }
+        .status-code {
+            font-size: 24px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .icon {
+            font-size: 60px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        .home-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .home-button:hover {
+            background-color: #2980b9;
+        }
+        .oauth2-error {
+            background-color: #f9f2f4;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+<div class="error-container">
+    <div class="icon">⚠️</div>
+    <h1 th:text="${errorTitle}">Error</h1>
+    <div class="status-code" th:if="${statusCode}" th:text="'Status Code: ' + ${statusCode}"></div>
+    <p th:text="${errorMessage}">An error has occurred.</p>
+
+    <!-- OAuth2 specific error details -->
+    <div class="oauth2-error" th:if="${oauth2Error}">
+        <h3>OAuth2 Error Details:</h3>
+        <p><strong>Error:</strong> <span th:text="${oauth2Error}"></span></p>
+        <p th:if="${oauth2ErrorDescription}"><strong>Description:</strong> <span th:text="${oauth2ErrorDescription}"></span></p>
+    </div>
+
+    <a href="/" class="home-button">Return to Home</a>
+</div>
+</body>
+</html>

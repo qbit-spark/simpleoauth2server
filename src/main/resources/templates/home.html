@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OAuth2 Authorization Server</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            margin-top: 40px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .info {
+            margin-top: 20px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Welcome to OAuth2 Authorization Server</h1>
+
+    <div class="card">
+        <h2>Server Information</h2>
+        <p>This is a simple OAuth2 Authorization Server built with Spring Security OAuth2.</p>
+        <p>The server is configured to support OpenID Connect and OAuth2 flows.</p>
+    </div>
+
+    <div class="info">
+        <h2>Getting Started</h2>
+        <p>You can use this authorization server to:</p>
+        <ul>
+            <li>Generate access tokens</li>
+            <li>Validate tokens</li>
+            <li>Authenticate users</li>
+            <li>Manage client applications</li>
+        </ul>
+
+        <p>You are currently logged in as <b th:text="${#authentication.name}">user</b> with roles <b th:text="${#authentication.authorities}">roles</b>.</p>
+
+        <a class="btn" href="/logout">Logout</a>
+    </div>
+</div>
+</body>
+</html>

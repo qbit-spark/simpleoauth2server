@@ -8,7 +8,7 @@
         <version>3.4.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.KeyCloackPlayground</groupId>
+    <groupId>com.simpleoauth2Server</groupId>
     <artifactId>SimpleOauth2Server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>SimpleOauth2Server</name>
