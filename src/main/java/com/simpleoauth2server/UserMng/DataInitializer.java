@@ -43,11 +43,13 @@ public class DataInitializer implements CommandLineRunner {
     @Transactional
     public void run(String... args) {
         try {
-            // Step 1: Initialize users
+
+            // Step 1: Initialize OAuth2 clients
+            initializeOAuthClients();
+
+            // Step 2: Initialize users
             initializeUsers();
 
-            // Step 2: Initialize OAuth2 clients
-            initializeOAuthClients();
 
             logger.info("Data initialization completed successfully");
         } catch (Exception e) {
