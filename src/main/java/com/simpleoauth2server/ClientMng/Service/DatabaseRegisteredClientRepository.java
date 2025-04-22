@@ -4,15 +4,19 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.simpleoauth2server.ClientMng.Entity.RegisteredClientEntity;
+import com.simpleoauth2server.ClientMng.Entity.TokenSettingsEntity;
 import com.simpleoauth2server.ClientMng.Repo.RegisteredClientEntityRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
+import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Primary
+@Order(1)
 @Transactional
 public class DatabaseRegisteredClientRepository implements RegisteredClientRepository {
 
@@ -30,10 +35,6 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
     private final RegisteredClientEntityRepository repository;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Constructor that accepts a properly configured ObjectMapper from the application context.
-     * This ensures consistent Jackson configuration across the application.
-     */
     public DatabaseRegisteredClientRepository(
             RegisteredClientEntityRepository repository,
             ObjectMapper objectMapper) {
@@ -51,14 +52,24 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
     @Override
     public RegisteredClient findById(String id) {
         logger.debug("Finding client by ID: {}", id);
-        return repository.findById(id)
-                .map(this::toObject)
-                .orElse(null);
+
+        // Try to find by UUID first if the ID is a valid UUID
+        try {
+            UUID uuid = UUID.fromString(id);
+            return repository.findById(String.valueOf(uuid))
+                    .map(this::toObject)
+                    .orElse(null);
+        } catch (IllegalArgumentException e) {
+            // If not a valid UUID, try to find by client ID
+            return repository.findByClientId(id)
+                    .map(this::toObject)
+                    .orElse(null);
+        }
     }
 
     @Override
     public RegisteredClient findByClientId(String clientId) {
-        logger.debug("Finding client by clientId: {}", clientId);
+        logger.info("Finding client by clientId: {}", clientId);
         return repository.findByClientId(clientId)
                 .map(this::toObject)
                 .orElse(null);
@@ -69,7 +80,19 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
      */
     private RegisteredClientEntity toEntity(RegisteredClient registeredClient) {
         RegisteredClientEntity entity = new RegisteredClientEntity();
-        entity.setId(registeredClient.getId());
+
+        // For new clients, we don't set ID as it will be auto-generated
+        // For existing clients that might have been fetched from DB previously
+        try {
+            if (registeredClient.getId() != null) {
+                // If it's a valid UUID, use it
+                UUID.fromString(registeredClient.getId());
+                entity.setId(UUID.fromString(registeredClient.getId()));
+            }
+        } catch (IllegalArgumentException e) {
+            // Not a valid UUID - it's likely a business identifier, we'll let JPA generate a new UUID
+        }
+
         entity.setClientId(registeredClient.getClientId());
         entity.setClientSecret(registeredClient.getClientSecret());
         entity.setClientIdIssuedAt(registeredClient.getClientIdIssuedAt());
@@ -92,11 +115,58 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
         entity.setScopes(new HashSet<>(registeredClient.getScopes()));
 
         try {
+            // Serialize client settings
             entity.setClientSettings(objectMapper.writeValueAsString(registeredClient.getClientSettings().getSettings()));
+
+            // Serialize token settings (for backward compatibility)
             entity.setTokenSettings(objectMapper.writeValueAsString(registeredClient.getTokenSettings().getSettings()));
+
+            // Create and populate TokenSettingsEntity
+            TokenSettingsEntity tokenSettingsEntity = new TokenSettingsEntity();
+
+            // Convert Duration values to seconds
+            if (registeredClient.getTokenSettings().getAccessTokenTimeToLive() != null) {
+                tokenSettingsEntity.setAccessTokenTimeToLiveSeconds(
+                        registeredClient.getTokenSettings().getAccessTokenTimeToLive().getSeconds());
+            }
+
+            if (registeredClient.getTokenSettings().getRefreshTokenTimeToLive() != null) {
+                tokenSettingsEntity.setRefreshTokenTimeToLiveSeconds(
+                        registeredClient.getTokenSettings().getRefreshTokenTimeToLive().getSeconds());
+            }
+
+            if (registeredClient.getTokenSettings().getAuthorizationCodeTimeToLive() != null) {
+                tokenSettingsEntity.setAuthorizationCodeTimeToLiveSeconds(
+                        registeredClient.getTokenSettings().getAuthorizationCodeTimeToLive().getSeconds());
+            }
+
+            if (registeredClient.getTokenSettings().getDeviceCodeTimeToLive() != null) {
+                tokenSettingsEntity.setDeviceCodeTimeToLiveSeconds(
+                        registeredClient.getTokenSettings().getDeviceCodeTimeToLive().getSeconds());
+            }
+
+            tokenSettingsEntity.setReuseRefreshTokens(
+                    registeredClient.getTokenSettings().isReuseRefreshTokens());
+
+            if (registeredClient.getTokenSettings().getIdTokenSignatureAlgorithm() != null) {
+                tokenSettingsEntity.setIdTokenSignatureAlgorithm(
+                        registeredClient.getTokenSettings().getIdTokenSignatureAlgorithm().getName());
+            }
+
+            if (registeredClient.getTokenSettings().getAccessTokenFormat() != null) {
+                tokenSettingsEntity.setAccessTokenFormat(
+                        registeredClient.getTokenSettings().getAccessTokenFormat().getValue());
+            }
+
+            tokenSettingsEntity.setX509CertificateBoundAccessTokens(
+                    registeredClient.getTokenSettings().isX509CertificateBoundAccessTokens());
+
+            entity.setTokenSettingsEntity(tokenSettingsEntity);
+
         } catch (JsonProcessingException e) {
-            logger.error("Error serializing client settings for client {}: {}", registeredClient.getClientId(), e.getMessage());
-            throw new RuntimeException("Error serializing client settings", e);
+            logger.error("Error serializing settings for client {}: {}",
+                    registeredClient.getClientId(), e.getMessage());
+            throw new RuntimeException("Error serializing settings", e);
         }
 
         return entity;
@@ -115,7 +185,8 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
                     .map(AuthorizationGrantType::new)
                     .collect(Collectors.toSet());
 
-            RegisteredClient.Builder builder = RegisteredClient.withId(entity.getId())
+            // Use the entity's UUID as the client ID for Spring OAuth2
+            RegisteredClient.Builder builder = RegisteredClient.withId(entity.getId().toString())
                     .clientId(entity.getClientId())
                     .clientSecret(entity.getClientSecret())
                     .clientIdIssuedAt(entity.getClientIdIssuedAt())
@@ -131,10 +202,58 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
             Map<String, Object> clientSettingsMap = deserializeSettings(entity.getClientSettings());
             builder.clientSettings(ClientSettings.withSettings(clientSettingsMap).build());
 
-            // Handle token settings with careful parsing of Duration values
-            Map<String, Object> tokenSettingsMap = deserializeSettings(entity.getTokenSettings());
-            tokenSettingsMap = ensureDurationFields(tokenSettingsMap);
-            builder.tokenSettings(TokenSettings.withSettings(tokenSettingsMap).build());
+            // Use TokenSettingsEntity if available
+            if (entity.getTokenSettingsEntity() != null) {
+                TokenSettingsEntity tokenEntity = entity.getTokenSettingsEntity();
+                TokenSettings.Builder tokenBuilder = TokenSettings.builder();
+
+                // Convert seconds back to Duration objects
+                if (tokenEntity.getAccessTokenTimeToLiveSeconds() != null) {
+                    tokenBuilder.accessTokenTimeToLive(
+                            Duration.ofSeconds(tokenEntity.getAccessTokenTimeToLiveSeconds()));
+                }
+
+                if (tokenEntity.getRefreshTokenTimeToLiveSeconds() != null) {
+                    tokenBuilder.refreshTokenTimeToLive(
+                            Duration.ofSeconds(tokenEntity.getRefreshTokenTimeToLiveSeconds()));
+                }
+
+                if (tokenEntity.getAuthorizationCodeTimeToLiveSeconds() != null) {
+                    tokenBuilder.authorizationCodeTimeToLive(
+                            Duration.ofSeconds(tokenEntity.getAuthorizationCodeTimeToLiveSeconds()));
+                }
+
+                if (tokenEntity.getDeviceCodeTimeToLiveSeconds() != null) {
+                    tokenBuilder.deviceCodeTimeToLive(
+                            Duration.ofSeconds(tokenEntity.getDeviceCodeTimeToLiveSeconds()));
+                }
+
+                // Set other token properties
+                if (tokenEntity.getReuseRefreshTokens() != null) {
+                    tokenBuilder.reuseRefreshTokens(tokenEntity.getReuseRefreshTokens());
+                }
+
+                if (tokenEntity.getIdTokenSignatureAlgorithm() != null) {
+                    tokenBuilder.idTokenSignatureAlgorithm(
+                            SignatureAlgorithm.from(tokenEntity.getIdTokenSignatureAlgorithm()));
+                }
+
+                if (tokenEntity.getAccessTokenFormat() != null) {
+                    tokenBuilder.accessTokenFormat(new OAuth2TokenFormat(tokenEntity.getAccessTokenFormat()));
+                }
+
+                if (tokenEntity.getX509CertificateBoundAccessTokens() != null) {
+                    tokenBuilder.x509CertificateBoundAccessTokens(
+                            tokenEntity.getX509CertificateBoundAccessTokens());
+                }
+
+                builder.tokenSettings(tokenBuilder.build());
+            } else {
+                // Fall back to JSON token settings if needed
+                Map<String, Object> tokenSettingsMap = deserializeSettings(entity.getTokenSettings());
+                tokenSettingsMap = ensureDurationFields(tokenSettingsMap);
+                builder.tokenSettings(TokenSettings.withSettings(tokenSettingsMap).build());
+            }
 
             return builder.build();
         } catch (Exception e) {
@@ -224,7 +343,7 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
     private RegisteredClient createClientWithDefaultSettings(RegisteredClientEntity entity) {
         logger.info("Creating fallback client with default settings for: {}", entity.getClientId());
 
-        RegisteredClient.Builder builder = RegisteredClient.withId(entity.getId())
+        RegisteredClient.Builder builder = RegisteredClient.withId(entity.getId().toString())
                 .clientId(entity.getClientId())
                 .clientSecret(entity.getClientSecret());
 
