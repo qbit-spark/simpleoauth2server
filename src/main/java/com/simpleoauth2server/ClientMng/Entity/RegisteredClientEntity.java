@@ -1,5 +1,6 @@
 package com.simpleoauth2server.ClientMng.Entity;
 
+import com.simpleoauth2server.UserMng.Entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -71,4 +72,9 @@ public class RegisteredClientEntity {
     @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "token_settings_id")
     private TokenSettingsEntity tokenSettingsEntity;
+
+    // In RegisteredClientEntity.java
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User owner;
 }

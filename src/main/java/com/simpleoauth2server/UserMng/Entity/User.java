@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.util.Set;
 import java.util.UUID;
 
+// Update to User.java
 @Entity
 @Table(name = "users")
 @Data
@@ -25,6 +26,9 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(unique = true)
+    private String email;
 
     @Column(nullable = false)
     private boolean enabled = true;
