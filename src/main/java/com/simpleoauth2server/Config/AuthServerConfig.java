@@ -1,6 +1,5 @@
 package com.simpleoauth2server.Config;
 
-
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -12,12 +11,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -28,7 +27,11 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -42,7 +45,6 @@ import java.util.UUID;
 public class AuthServerConfig {
 
     private final DatabaseUserDetailsService userDetailsService;
-   // private final PasswordEncoder passwordEncoder;
     private final RegisteredClientRepository clientRepository;
     private final ApplicationContext applicationContext;
 
@@ -53,22 +55,26 @@ public class AuthServerConfig {
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
                 new OAuth2AuthorizationServerConfigurer();
 
+        // Define API request matchers
+        RequestMatcher apiRequestMatcher = new AntPathRequestMatcher("/api/**");
+
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .csrf(csrf -> csrf.ignoringRequestMatchers(authorizationServerConfigurer.getEndpointsMatcher()))
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(authorizationServerConfigurer.getEndpointsMatcher())
+                        .ignoringRequestMatchers(apiRequestMatcher)
+                )
                 .with(authorizationServerConfigurer, (authorizationServer) ->
                         authorizationServer
                                 .authorizationEndpoint(authorizationEndpoint ->
                                         authorizationEndpoint.consentPage("/oauth2/consent"))
                                 .oidc(Customizer.withDefaults())    // Enable OpenID Connect 1.0
-
                 )
                 .authorizeHttpRequests((authorize) ->
                         authorize
                                 .requestMatchers("/oauth2/consent").permitAll() // This must come BEFORE anyRequest()
                                 .anyRequest().authenticated()
                 )
-
                 .exceptionHandling((exceptions) -> exceptions
                         // For HTML browser requests - redirect to login
                         .defaultAuthenticationEntryPointFor(
@@ -91,9 +97,17 @@ public class AuthServerConfig {
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
             throws Exception {
+        // API endpoints matcher
+        RequestMatcher apiMatcher = new AntPathRequestMatcher("/api/**");
+
         http
+                .securityMatcher(new OrRequestMatcher(
+                        new AntPathRequestMatcher("/**")
+                ))
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/custom-login", "/error", "/access-denied").permitAll()
+                        .requestMatchers("/api/users/register").permitAll()
+                        .requestMatchers("/api/**").permitAll() // For now, allow all API access for testing
                         .anyRequest().authenticated()
                 )
                 .formLogin(formLogin ->
@@ -103,6 +117,10 @@ public class AuthServerConfig {
                                 .defaultSuccessUrl("/")
                                 .permitAll()
                 )
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(apiMatcher)
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                )
                 .exceptionHandling(exceptions -> exceptions
                         .accessDeniedPage("/access-denied")
                 )
@@ -110,51 +128,6 @@ public class AuthServerConfig {
 
         return http.build();
     }
-
-
-
-
-    /***
-     *     This is the in-memory user details service for testing purposes.
-     * @return
-     */
-
-//    @Bean
-//    public UserDetailsService userDetailsService() {
-//        UserDetails userDetails = User.withDefaultPasswordEncoder()
-//                .username("user")
-//                .password("password")
-//                .roles("USER")
-//                .build();
-//
-//        return new InMemoryUserDetailsManager(userDetails);
-//    }
-
-
-    /***
-     *     This is the in-memory user details service for testing purposes.
-     * @return
-     */
-    // Uncomment this method if you want to use the in-memory user details service
-//    @Bean
-//    public RegisteredClientRepository registeredClientRepository() {
-//        // Modify the client to match your needs - using your client ID and redirect URI
-//        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-//                .clientId("client")  // Changed to match your client ID
-//                .clientSecret(passwordEncoder.encode("secret"))
-//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-//                .redirectUri("http://localhost:8080/login/oauth2/code/client")
-//                .scope(OidcScopes.OPENID)
-//                .scope("read")
-//                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-//                .build();
-//
-//        return new InMemoryRegisteredClientRepository(oidcClient);
-//    }
-
-
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
@@ -175,8 +148,7 @@ public class AuthServerConfig {
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(2048);
             keyPair = keyPairGenerator.generateKeyPair();
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }
         return keyPair;
@@ -199,5 +171,4 @@ public class AuthServerConfig {
     public OAuth2AuthorizationConsentService authorizationConsentService() {
         return new InMemoryOAuth2AuthorizationConsentService();
     }
-
 }

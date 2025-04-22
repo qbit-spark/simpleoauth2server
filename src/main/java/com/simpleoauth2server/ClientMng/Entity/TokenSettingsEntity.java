@@ -47,17 +47,17 @@ public class TokenSettingsEntity {
     @OneToOne(mappedBy = "tokenSettingsEntity")
     private RegisteredClientEntity registeredClientEntity;
 
-//    // Factory method for creating an entity with default values
-//    public static TokenSettingsEntity createDefault() {
-//        TokenSettingsEntity entity = new TokenSettingsEntity();
-//        entity.setAccessTokenTimeToLiveSeconds(1800L);        // 30 minutes
-//        entity.setRefreshTokenTimeToLiveSeconds(86400L);      // 1 day
-//        entity.setAuthorizationCodeTimeToLiveSeconds(300L);   // 5 minutes
-//        entity.setDeviceCodeTimeToLiveSeconds(300L);          // 5 minutes
-//        entity.setReuseRefreshTokens(true);
-//        entity.setIdTokenSignatureAlgorithm("RS256");
-//        entity.setAccessTokenFormat("self-contained");
-//        entity.setX509CertificateBoundAccessTokens(false);
-//        return entity;
-//    }
+    // Factory method for creating an entity with default values
+    public static TokenSettingsEntity createDefault() {
+        TokenSettingsEntity entity = new TokenSettingsEntity();
+        entity.setAccessTokenTimeToLiveSeconds(1800L);        // 30 minutes
+        entity.setRefreshTokenTimeToLiveSeconds(86400L);      // 1 day
+        entity.setAuthorizationCodeTimeToLiveSeconds(300L);   // 5 minutes
+        entity.setDeviceCodeTimeToLiveSeconds(300L);          // 5 minutes
+        entity.setReuseRefreshTokens(true);
+        entity.setIdTokenSignatureAlgorithm("RS256");
+        entity.setAccessTokenFormat("self-contained");
+        entity.setX509CertificateBoundAccessTokens(false);
+        return entity;
+    }
 }

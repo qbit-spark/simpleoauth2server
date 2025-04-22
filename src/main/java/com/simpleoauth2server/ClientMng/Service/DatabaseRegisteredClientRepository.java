@@ -75,9 +75,8 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
                 .orElse(null);
     }
 
-    /**
-     * Converts a RegisteredClient object to a RegisteredClientEntity for database storage.
-     */
+    // Modify only the toEntity method in DatabaseRegisteredClientRepository.java
+
     private RegisteredClientEntity toEntity(RegisteredClient registeredClient) {
         RegisteredClientEntity entity = new RegisteredClientEntity();
 
@@ -161,7 +160,9 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
             tokenSettingsEntity.setX509CertificateBoundAccessTokens(
                     registeredClient.getTokenSettings().isX509CertificateBoundAccessTokens());
 
+            // Set the entity reference to establish the bidirectional relationship
             entity.setTokenSettingsEntity(tokenSettingsEntity);
+            tokenSettingsEntity.setRegisteredClientEntity(entity); // This is the key fix
 
         } catch (JsonProcessingException e) {
             logger.error("Error serializing settings for client {}: {}",
@@ -171,7 +172,6 @@ public class DatabaseRegisteredClientRepository implements RegisteredClientRepos
 
         return entity;
     }
-
     /**
      * Converts a RegisteredClientEntity from the database to a RegisteredClient object.
      */
