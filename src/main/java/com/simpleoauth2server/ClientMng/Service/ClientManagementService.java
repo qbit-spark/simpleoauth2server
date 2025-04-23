@@ -287,9 +287,8 @@ public class ClientManagementService implements RegisteredClientRepository {
     @Override
     @Transactional
     public void save(RegisteredClient registeredClient) {
-        logger.debug("Saving client: {}", registeredClient.getClientId());
-        RegisteredClientEntity entity = toEntity(registeredClient);
-        repository.save(entity);
+       //This method is not used in the current implementation
+      // Ignore it plz
     }
 
     @Override
