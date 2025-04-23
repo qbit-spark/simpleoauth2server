@@ -13,7 +13,7 @@ public class ClientResponseDTO {
     private String clientName;
     private Instant clientIdIssuedAt;
     private Instant clientSecretExpiresAt;
-    private Set<String> redirectUris;
+    private String redirectUris;
     private Set<String> scopes;
     private Set<String> authorizationGrantTypes;
     private Set<String> clientAuthenticationMethods;
