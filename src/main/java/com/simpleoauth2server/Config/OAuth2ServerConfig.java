@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.simpleoauth2server.ClientMng.Service.DatabaseUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,6 +38,8 @@ import java.util.UUID;
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class OAuth2ServerConfig {
+
+    private final DatabaseUserDetailsService userDetailsService;
 
     @Bean
     @Order(1)
@@ -80,7 +83,9 @@ public class OAuth2ServerConfig {
                         )
                         // Optional: Custom access denied handler (for 403 Forbidden)
                         .accessDeniedPage("/access-denied")
-                );
+                )
+                // Set database user details service
+                .userDetailsService(userDetailsService);
 
         return http.build();
     }
