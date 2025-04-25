@@ -11,3 +11,19 @@ public class SimpleOauth2ServerApplication {
     }
 
 }
+
+
+/***
+ *  If you wan tto generate keys for JWT
+ */
+//public static void main(String[] args) throws Exception {
+//    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+//    keyPairGenerator.initialize(2048);
+//    KeyPair keyPair = keyPairGenerator.generateKeyPair();
+//
+//    String publicKeyString = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+//    String privateKeyString = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
+//
+//    System.out.println("Public Key: " + publicKeyString);
+//    System.out.println("Private Key: " + privateKeyString);
+//}

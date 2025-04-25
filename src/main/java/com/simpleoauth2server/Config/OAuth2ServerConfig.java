@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.simpleoauth2server.ClientMng.Service.DatabaseUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -28,10 +29,14 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import java.util.UUID;
 
 @Configuration
@@ -40,6 +45,12 @@ import java.util.UUID;
 public class OAuth2ServerConfig {
 
     private final DatabaseUserDetailsService userDetailsService;
+
+    @Value("${app.security.rsa.public-key}")
+    private String publicKeyString;
+
+    @Value("${app.security.rsa.private-key}")
+    private String privateKeyString;
 
     @Bean
     @Order(1)
@@ -90,30 +101,52 @@ public class OAuth2ServerConfig {
         return http.build();
     }
 
+
+
     @Bean
     public JWKSource<SecurityContext> jwkSource() {
-        KeyPair keyPair = generateRsaKey();
+        // Generate a fixed key ID
+        String keyId = "auth-server-kid";
+
+        // Load RSA keys from properties
+        KeyPair keyPair = loadRsaKeys();
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
                 .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
+                .keyID(keyId)
                 .build();
+
         JWKSet jwkSet = new JWKSet(rsaKey);
         return new ImmutableJWKSet<>(jwkSet);
     }
 
-    private static KeyPair generateRsaKey() {
-        KeyPair keyPair;
+    private KeyPair loadRsaKeys() {
         try {
-            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-            keyPairGenerator.initialize(2048);
-            keyPair = keyPairGenerator.generateKeyPair();
+            // Convert Base64 encoded strings to byte arrays
+            byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyString);
+            byte[] privateKeyBytes = Base64.getDecoder().decode(privateKeyString);
+
+            // Get RSA key factory
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+
+            // Create public key
+            X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(publicKeyBytes);
+            RSAPublicKey publicKey = (RSAPublicKey) keyFactory.generatePublic(publicKeySpec);
+
+            // Create private key
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            RSAPrivateKey privateKey = (RSAPrivateKey) keyFactory.generatePrivate(privateKeySpec);
+
+            // Return key pair
+            return new KeyPair(publicKey, privateKey);
         } catch (Exception ex) {
-            throw new IllegalStateException(ex);
+            throw new IllegalStateException("Failed to load RSA keys", ex);
         }
-        return keyPair;
     }
+
+
 
     @Bean
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
