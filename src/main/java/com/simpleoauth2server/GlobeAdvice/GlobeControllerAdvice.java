@@ -38,7 +38,6 @@ public class GlobeControllerAdvice {
     }
 
 
-
     @ExceptionHandler(TokenEmptyException.class)
     public ResponseEntity<GlobalJsonResponseBody> generateTokenEmptyException(Exception exception) {
 
